@@ -21,6 +21,10 @@ done
 [ $# -gt 0 ] || { sed -n '2,10p' "$0" >&2; exit 1; }
 
 for repo in "$@"; do
+  if [ "${repo,,}" = "lemon07r/revera-workflows" ]; then
+    echo "$repo: skipped (it holds the shared workflow)" >&2
+    continue
+  fi
   branch=$(gh api "repos/$repo" -q .default_branch)
   for s in "${SECRETS[@]}"; do
     printf '%s' "${!s}" | gh secret set "$s" -R "$repo" >/dev/null
@@ -28,9 +32,10 @@ for repo in "$@"; do
 
   content=$(sed "s/__BRANCH__/$branch/" "$HERE/caller.yml")
   b64=$(printf '%s\n' "$content" | base64 -w0)
-  sha=$(gh api "repos/$repo/contents/$WF?ref=$branch" -q .sha 2>/dev/null || true)
-  if [ -n "$sha" ]; then
-    current=$(gh api "repos/$repo/contents/$WF?ref=$branch" -q .content | base64 -d)
+  sha=""
+  if existing=$(gh api "repos/$repo/contents/$WF?ref=$branch" 2>/dev/null); then
+    sha=$(jq -r .sha <<<"$existing")
+    current=$(jq -r .content <<<"$existing" | base64 -d)
     if [ "$current" = "$content" ]; then
       echo "$repo: secrets set; workflow already up to date"
       continue

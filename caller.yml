@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [__BRANCH__]
+  workflow_dispatch:
 
 permissions:
   contents: read

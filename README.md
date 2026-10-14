@@ -7,7 +7,8 @@ settings are changed in one place.
 
 - On a pull request, Revera reviews it and posts findings as comments.
 - On a push to the default branch, it refreshes the cached Vera index, so new
-  pull requests start with a warm index.
+  pull requests start with a warm index. **Run workflow** on the repository's
+  `revera` workflow (Actions tab) does the same by hand.
 - Fork and Dependabot pull requests are skipped (they get no secrets).
 
 ## Enable a repository

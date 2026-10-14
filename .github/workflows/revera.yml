@@ -1,77 +1,19 @@
 name: revera
 
-# Shared Revera setup for lemon07r's repositories. Each repository calls this
-# with a small caller workflow (see README.md); change models or settings here
-# and every repository picks it up on its next run.
-#
-# pull_request: review the PR and post findings.
-# push (default branch): refresh the cached Vera index so new PRs start warm.
-
 on:
-  workflow_call:
+  pull_request:
+  push:
+    branches: [main]
 
-permissions: {}
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: revera-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   revera:
-    # Fork and Dependabot PRs get no secrets, so skip them instead of failing.
-    if: >-
-      github.event_name != 'pull_request' ||
-      (github.event.pull_request.head.repo.full_name == github.repository &&
-       github.actor != 'dependabot[bot]')
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          persist-credentials: false
-
-      # Written outside the checkout so a pull request cannot change it.
-      - name: Write Revera config
-        shell: bash
-        run: |
-          cat > "$RUNNER_TEMP/revera.yaml" <<'EOF'
-          review:
-            publish: comment
-          models:
-            investigator:
-              protocol: openai-chat
-              base_url: ${REVERA_MODEL_BASE_URL}
-              api_key_env: REVERA_MODEL_API_KEY
-              model: glm-5.3
-              max_output_tokens: 6000
-              temperature: 0.2
-              reasoning: high
-            validator:
-              protocol: openai-chat
-              base_url: ${REVERA_MODEL_BASE_URL}
-              api_key_env: REVERA_MODEL_API_KEY
-              model: glm-5.3-flash
-              max_output_tokens: 4000
-              temperature: 0.2
-              reasoning: high
-          vera:
-            backend: api
-            embedding:
-              base_url: ${REVERA_EMBEDDING_BASE_URL}
-              model: qwen/qwen3-embedding-8b
-              api_key_env: REVERA_EMBEDDING_API_KEY
-            reranker:
-              base_url: ${REVERA_EMBEDDING_BASE_URL}
-              model: qwen/qwen3-reranker-8b
-              api_key_env: REVERA_EMBEDDING_API_KEY
-          EOF
-
-      - uses: VeraTools/revera@v0
-        with:
-          config: ${{ runner.temp }}/revera.yaml
-        env:
-          REVERA_MODEL_BASE_URL: ${{ secrets.REVERA_MODEL_BASE_URL }}
-          REVERA_MODEL_API_KEY: ${{ secrets.REVERA_MODEL_API_KEY }}
-          REVERA_EMBEDDING_BASE_URL: ${{ secrets.REVERA_EMBEDDING_BASE_URL }}
-          REVERA_EMBEDDING_API_KEY: ${{ secrets.REVERA_EMBEDDING_API_KEY }}
+    uses: lemon07r/revera-workflows/.github/workflows/revera.yml@main
+    secrets: inherit
